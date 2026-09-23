@@ -64,6 +64,9 @@ async def receive_sms(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
+    # ADD THIS LINE RIGHT HERE:
+    print(f"DEBUG INCOMING WEBHOOK: Sender: {sender} | Message: {message}")
+
     # 2. Only allow official shortcodes [1]
     valid_senders = ["3737", "8558"]
     if sender not in valid_senders:
