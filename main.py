@@ -1,15 +1,24 @@
+import os
+import re
+from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
-import re
-from datetime import datetime
 
 # ==========================================
 # 1. DATABASE SETUP
 # ==========================================
-SQLALCHEMY_DATABASE_URL = "sqlite:///./payments.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./payments.db")
+
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+# CRITICAL ADDITIONS: Define SessionLocal and Base
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -64,10 +73,9 @@ async def receive_sms(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    # ADD THIS LINE RIGHT HERE:
     print(f"DEBUG INCOMING WEBHOOK: Sender: {sender} | Message: {message}")
 
-    # 2. Only allow official shortcodes [1]
+    # 2. Only allow official shortcodes
     valid_senders = ["3737", "8558"]
     if sender not in valid_senders:
         return {"status": "ignored", "reason": "Not an official payment shortcode"}
