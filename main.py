@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 import httpx
+
+# Configure the logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ==========================================
 # 1. DATABASE SETUP
@@ -84,6 +89,9 @@ async def receive_sms(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
+    # This will now forcefully print to your Render logs
+    logger.info(f"DEBUG INCOMING WEBHOOK: Sender: {sender} | Message: {message}")
+
     valid_senders = ["3737", "8558"]
     if sender not in valid_senders:
         return {"status": "ignored", "reason": "Not an official payment shortcode"}
@@ -108,6 +116,8 @@ async def receive_sms(
     )
     db.add(new_trx)
     db.commit()
+
+    logger.info(f"✅ Logged Payment: {amount} PKR, TRX: {trx_id}")
 
     return {"status": "success", "trx_id": trx_id, "amount": amount}
 
